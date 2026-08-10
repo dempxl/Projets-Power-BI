@@ -4,5 +4,16 @@
 
 # PROJET Power BI
 
-## Sommaire
-- [Projet 1 : Données de magasin](superstore-dataset/)
+## Description
+
+Ce projet regrouppe une liste d'analyses fictives afin de s'entrainner sur le logiciel Power BI et plus généralement sur le traitement, regrouppement et la visualisation des données.
+
+## Liste des analyses  
+
+| Numéro | Nom                                                 | État |  
+|-|-|-|  
+| 1      | [Ventes d'un magasin](superstore-dataset/)          | En cours |  
+| 2      | [Prix du carburant en France](Analyse_2-carburant/) | Pas commencé |  
+
+
+## Structure du dépôt
