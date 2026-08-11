@@ -20,3 +20,13 @@ Ce projet regrouppe une liste d'analyses fictives afin de s'entrainner sur le lo
 ---
 
 ## Structure du dépôt
+```
+├── Analyse_1-superstore
+│   └── README.md
+├── Analyse_2-carburant
+│   └── README.md
+├── img
+│   └── power-bi_logo.svg
+├── README.md
+└── tutorial.md
+```
