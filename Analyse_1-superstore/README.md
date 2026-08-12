@@ -128,11 +128,37 @@ Trimestre = "T" & QUARTER(Calendrier[Date])
 Maintenant que l'on a fait tout ça, il faut définir notre table en **"Table des dates"**.
 Pour ça, il suffit juste de cliquer sur *"Marquer comme table de dates"*, cocher *"Marque en tant que table de dates"* et sélectionner la colonne Date.
 
-> 💡 Cette table nous servira plus tard dans la phase 2
-
 ---
 
 ### Phase 2 — Modélisation 
-On a créé une table de date dans la phase précédente mais il nous manques quelque chose... **il faut qu'on la relie à la table Orders[Date]** (**relation 1-plusieurs**). Cela nous permettra par la suite de n'utilisr que la table Calendrier pour faire nos visuelles sur des dates, jamais directement la table Orders.
+Nous avons maintenant 4 tables: `Order`, `People`, `Returns` et `Calendrier`.
+Avant de rentrer dans le vif, il faut nous assurer d'une chose: savoir la **table des faits** (celle avec les mesures Sales, Profit, Quantity...) et lesquelles sont les **tables de dimenssions** (celles qui servent à filtrer/catégoriser).
+Cela nous permettra par la suite de n'utiliser que les tables de dimensions pour faire nos visuelles, jamais directement la table des faits.
 
-![screenshot relation Calendrier Orders](../img/relation.png)
+Dans notre cas le choix est simple, on remarque que **Orders est la table des faits** car elle contient toutes les mesures et **les autres sont celle de dimenssions** car elle servent à filtrer et catégoriser.
+
+Maintenant que l'on a décidé les type de table, il faut choisir des relations entre ses tables, **les tables de dimension pointe vers la table des faits** (relation 1:*). Pour ça, il faut trouver les liaisons entre les tables. 
+Cela peut se faire naturellement:
+- La colonne Date pour Calendrier et Orders
+- la colonne Order ID pour Returns et Orders
+
+Mais pour People il faut un peut creuser... En effet à première vue on pourrait se dire que le choix serait de prendre People[Person] et Orders[Customer Name] mais attention, la table People correspond aux nom des producteurs et non des clients. De plus, si on prend le premier nom "Anna Andreadi", on remarque qu'il n'existe pas dans la colonne Customer Name de Orders. Donc il faut prendre la colonne People[Region] et Orders[Region].
+
+<div align=center>
+    <img src=../img/relation_calendrier.png alt="screenshot relation Calendrier Orders" width=32.5%>
+    <img src=../img/relation_returns.png alt="screenshot relation Returns Orders" width=32.5%>
+    <img src=../img/relation_people.png alt="screenshot relation People Orders" width=32.5%>
+</div>  
+
+Pour conclure, voici notre modèle en étoile:
+| Dimension         | Table de faits        | Colonnes	| Cardinalité |  
+|-|-|-|-|
+| Calendrier[Date]	| Orders[Order Date]	| Date	    | 1:* |
+| People[Region]	| Orders[Region]	    | Région	| 1:* |
+| Returns[Order ID]	| Orders[Order ID]	    | Order ID	| 1:* |
+
+Et un rendu visuelle dans l'onglet *Vue de modèle*
+![vue de modèle](../img/vue_de_modele.png)
+
+### Phase 3 — Mesures DAX à créer
+
