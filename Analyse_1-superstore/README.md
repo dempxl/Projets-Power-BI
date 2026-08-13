@@ -62,7 +62,7 @@ Initialement on vérifie si les données sont bien sous le bon format. Pour cela
 
 - On regarde le code DAX (ou M, language de Power Querry) pour regarder les types
 ```M
-= Table.TransformColumnTypes(#"En-têtes promus",{{"Row ID", Int64.Type}, {"Order ID", type text}, {"Order Date", type date}, {"Ship Date", type date}, ... ,{"Profit", type number}}) 
+= Table.TransformColumnTypes(#"En-têtes promus",{{"Row ID", Int64.Type}, {"Order ID", type text}, {"Order Date", type date}, {"Ship Date", type date}, [...] ,{"Profit", type number}}) 
 ```
 
 Pour la modifier il suffit juste de cliquer sur `Type de données` mentionnée précédemment ou bien directement sur l'icone de type sur la colonne (Pour texte ce sera un logo *ABC*, pour un entier ce sera *123* etc.) et de choisir celle voulu.  
@@ -111,6 +111,23 @@ Ensuite, dans la colonne de droite on clique sur *"Afficher Table"* et enfin dan
 
 On se retrouve alors avec rien, logique jusqu'à.
 On va tout d'abord trier toute les dates dans l'ordre croissant, pour ça on se retrouve dans la zone de texte pour y écrire notre formule en DAX.  
+
+**Qu'est ce que DAX ?**  *"DAX (Data Analysis Expressions) est une collection de fonctions, d’opérateurs et de constantes qui peuvent être utilisées dans une formule ou une expression, pour calculer et retourner une ou plusieurs valeurs. DAX vous permet de créer des informations à partir des données qui se trouvent déjà dans votre modèle."*  
+
+*Source: [learn.microsoft.com](https://learn.microsoft.com/fr-fr/power-bi/transform-model/desktop-quickstart-learn-dax-basics)*
+
+Le language est très similaire à celui d'Excel, avec:
+- Le nom de la mesure
+- Le signe égal (=), indiquant le début de la formule
+- Une fonction spécifique (par exemple SUM)
+- Des parenthèses qui entourent une expression qui contient un ou plusieurs arguments
+
+Par exemple:
+```M
+Total Sales = SUM(Sales[SalesAmount])
+```
+correspond à la mesure `Total Sales`, correspondant à la formule calculant la somme de tout les éléments de la Table[Colonne] `Sales[SalesAmount]`
+
 La formule à retenir est `CALENDAR` qui retourne une table à une colonne de toutes les dates comprises entre `StartDate` et `EndDate`. Maintenant il faut définir nos `StartDate` et `EndDate`, pour ça rien de plus simple on précise la date minimum/maximum de notre colonne `Order Date` dans la table `Orders`.  
 Ce qui nous donne le code suivant :
 ```M
@@ -160,5 +177,42 @@ Pour conclure, voici notre modèle en étoile:
 Et un rendu visuelle dans l'onglet *Vue de modèle*
 ![vue de modèle](../img/vue_de_modele.png)
 
+---
+
 ### Phase 3 — Mesures DAX à créer
 
+Maintenant on va devoir créer nos propres mesures, celles-ci nous permettrons par la suite de donner des informations suplémentaires dans notre tableau de bord.  
+**Tout d'abord, où écrire nos mesures ?** Pour cela, il suffit de cliquer sur *Nouvelle mesure* dans la zone *Calculs* et d'ensuite rentrer notre formule dans la zone situé au dessus de la table.  
+
+![DAX Nouvelle Mesure](../img/nouvelle_mesure.png)
+![DAX zone d'écriture](../img/DAX_zone.png)
+
+Rappelons nous les mesures à faire :
+- `Total Sales`, `Total Profit`, `Profit Margin %`
+- `Sales YTD`, `Sales vs Previous Year`
+- `Top Sub-Category by Profit`
+
+Les trois premières sont assez simple et assez directe, juste des simple sommes et une division
+```dax
+Total Sales = SUM(Orders[Sales])
+Total Profit = SUM(Orders[Profit])
+Profit Margin % = DIVIDE([Total Profit], [Total Sales]) * 100
+```
+
+Pour les suivante, il faut un tout petit peu réfléchir et décomposer le problème.  
+**Sales YTD**: Tout d'abord qu'est ce que le YTD ? Year To Date se traduit en *année en cours* ou *depuit le début de l'année* et veut simplement signifier le profit (ou autre montant) depuis le début de l'année jusqu'au mois courant. Par exemple si nous somme en Septembre alors le YTD se fera du 1er janvier au **31** (et non 1er) septembre. 
+
+Dans notre cas, on peut s'aider de `Total Sales` en lui appliquant un filtre pour n'exécuter la formule que sur une plage spécifique. Par chance il existe déjà une formule qui nous fait tout: `TOTALYTD`, celle-ci évalue une expressions spécifié (dans notre cas `SUM(Orders[Sales]))`) sur l'intervalle qui commence le premier jour de l'année et se termine à la dernière date dans la colonne de date spécifié. Ce qui nous donne la fonctione suivante:
+```dax
+Sales YTD = TOTALYTD(SUM(Orders[Sales]), Calendrier[Date])
+```
+Si on aurait voulu remplacer `TOTALYTD`, il aurait fallu plusieurs étapes supplémentaires. Tout d'abord il aurait fallu filter les dates, allant du 1er janvier à la date courante (**qui est considéré comme la date maximale**) et ensuite il aurait fallu calculer `Total Sales` sur ce filtre. Ce qui donne ceci:  
+```dax
+Sales YTD = 
+    CALCULATE(
+        [Total Sales], 
+        FILTER(
+            Calendrier,
+            Calendrier[Date] <= MAX(Calendrier[Date]) && Calendrier[Année] = YEAR(MAX(Calendrier[Date]))
+        ))
+```
