@@ -1,10 +1,5 @@
 # Analyse 1 — Superstore
 
-> Fichier source : [Kaggle](https://www.kaggle.com/datasets/yesshivam007/superstore-dataset)
-
----
-
-## Brief
 **Contexte fictif:** *Ayant rejoint l'équipe data d'une chaine de magasins américaine, la direction commerciale veut un tableau de bord pour piloter les ventes et la rentabilité.*
 
 **Les colonnes à observer sont:**
@@ -12,7 +7,11 @@
 - `Region`, `State`, `City` -> dimension géographique
 - `Category`, `Sub-Category`, `Product Name` -> dimension produit
 - `Customer Name`, `Segment` -> dimension client
-- `Sales`, `Quantity`, `Discount`, `Profit` -> mesures financières
+- `Sales`, `Quantity`, `Discount`, `Profit` -> mesures financières  
+
+> Fichier source : [Kaggle](https://www.kaggle.com/datasets/yesshivam007/superstore-dataset)
+
+---
 
 ## Étapes de travail
 
@@ -28,7 +27,7 @@
 ### Phase 3 — Mesures DAX à créer
 - `Total Sales`, `Total Profit`, `Profit Margin %`
 - `Sales YTD`, `Sales vs Previous Year`
-- `Top Sub-Category by Profit`
+- `TopN Sub-Category by Profit`
 
 ### Phase 4 — Construction du dashboard (2-3 pages)
 - Page 1 - Vue d'ensemble : KPIs (ventes, profit, marge, nb commandes), courbe d'évolution, carte géographique 
@@ -190,7 +189,7 @@ Maintenant on va devoir créer nos propres mesures, celles-ci nous permettrons p
 Rappelons nous les mesures à faire :
 - `Total Sales`, `Total Profit`, `Profit Margin %`
 - `Sales YTD`, `Sales vs Previous Year`
-- `Top Sub-Category by Profit`
+- `TopN Sub-Category by Profit`
 
 Les trois premières sont assez simple et assez directe, juste des simple sommes et une division
 ```dax
@@ -221,10 +220,12 @@ Sales YTD =
 *Très moins joli en effet...*  
 
 **Sales vs Previous Year**: Ici on cherche à comparer les ventes d'une année à sa précédente, pour y déterminer une baisse/hausse de ventes en pourcentage.  
-De façon mathématique cela reviens à écrire la formule:
+De façon mathématique cela reviens à écrire la formule:  
+
 $$
 \text{Sales vs Previous Year} = \frac{AC - AP}{AP}
-$$
+$$  
+
 Avec $AC$ les Total Sales de l'année courante et $AP$ les Total Sales de l'année précédente.  
 
 Le but finale est de créer une mesure qui calcul ce *YOY%*, on remarque que faire des mesures un peut partout peut devenir très bordélique...  
@@ -266,4 +267,46 @@ RETURN
 Si on utilise dans l'onglet *Affichage de Rapport* une Table avec comme colonnes, notre nouvelle mesure en fonction de l'année et des ventes totales, on a le résultat suivant:
 
 ![Table YOY%](../img/table_YOY.png)
+
+**TopN Sub-Category by Profit** : Pour cette mesure, on cherche à définir un classement pour chaque sous-catégories en fonction de son Profit Total.  
+Pour cela, on va utiliser la fonction `RANKX`, celle-ci retourne le rang d'une expression évaluée **dans le contexte actuel**, dans la liste de valeurs pour l'expression évaluée pour chaque ligne de la table spécifiée.  
+
+> ⚠️ `RANKX` n'est pas un filtre à appliquer à un calcul existant, c'est le calcul lui-même. Il ne sert pas à "restreindre" `[Total Profit]` dans notre cas, il sert à transformer `[Total Profit]` en un rang.
+
+Dans notre cas, il nous faut donc une table sur laquel "tourner" et une expression à évaluer pour chaque lignes de cette table. Notre table sera `Orders` (plus particulièrement `Orders[Sub-Category]`) et notre expression à évaluer ce sera `[Total Profit]`
+
+Maintenant que l'on a tout définit il nous suffit d'écrire la mesure: 
+```dax
+TopN Sub-Category by Profit =
+RANKX(VALUES(Orders[Sub-Category]), [Total Profit])
+```
+
+> ⚠️ Il ne faut pas oublier ici `VALUES` pour renvoyer une colonne de valeurs
+
+**mais il manque une subtilité !!** En effet, si on utilises juste `Orders[Sub-Category]` comme table de classement pendant que le visuel est déjà filtré par sous-catégorie (par exemple un tableau qui affiche une ligne par sous-catégorie), le classement risque de se faire dans un contexte trop restreint et de **toujours renvoyer "1" pour chaque ligne**. 
+
+![TopN mal implémenté](../img/topn_wrong.png)
+
+Pour éviter ça, il existe une fonction qui permet de dire "ignore les filtres actuellement appliqués sur cette colonne/table" :
+
+```dax
+TopN Sub-Category by Profit =
+RANKX(ALL(Orders[Sub-Category]), [Total Profit])
+```
+
+On se retrouve alors avec le tableau suivant : 
+
+![TopN bien implémenté](../img/topn_right.png)
+
+> 💡 Il est évident que les rangs ne seront pas dans le bonne ordre, pour que ça soit le cas on peut les trier en cliquant sur l'en tête `TopN Sub-Category by Profit`
+
+Une remarque que l'on peut faire est la valeur "1" sur la dernière ligne, ce qui peut sembler bizarre. Cette valeur est en fait le rang du `Total Profit` entier, vue que la valeur est unique, il est logique que le rang soit à "1".   
+
+---
+
+### Phase 4 — Construction du dashboard (2-3 pages)
+
+**TODO**
+
+---
 
