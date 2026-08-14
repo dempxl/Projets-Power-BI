@@ -200,13 +200,14 @@ Profit Margin % = DIVIDE([Total Profit], [Total Sales]) * 100
 ```
 
 Pour les suivante, il faut un tout petit peu réfléchir et décomposer le problème.  
+
 **Sales YTD**: Tout d'abord qu'est ce que le YTD ? Year To Date se traduit en *année en cours* ou *depuit le début de l'année* et veut simplement signifier le profit (ou autre montant) depuis le début de l'année jusqu'au mois courant. Par exemple si nous somme en Septembre alors le YTD se fera du 1er janvier au **31** (et non 1er) septembre. 
 
 Dans notre cas, on peut s'aider de `Total Sales` en lui appliquant un filtre pour n'exécuter la formule que sur une plage spécifique. Par chance il existe déjà une formule qui nous fait tout: `TOTALYTD`, celle-ci évalue une expressions spécifié (dans notre cas `SUM(Orders[Sales]))`) sur l'intervalle qui commence le premier jour de l'année et se termine à la dernière date dans la colonne de date spécifié. Ce qui nous donne la fonctione suivante:
 ```dax
 Sales YTD = TOTALYTD(SUM(Orders[Sales]), Calendrier[Date])
 ```
-Si on aurait voulu remplacer `TOTALYTD`, il aurait fallu plusieurs étapes supplémentaires. Tout d'abord il aurait fallu filter les dates, allant du 1er janvier à la date courante (**qui est considéré comme la date maximale**) et ensuite il aurait fallu calculer `Total Sales` sur ce filtre. Ce qui donne ceci:  
+Si on aurait voulu remplacer `TOTALYTD`, il aurait fallu plusieurs étapes supplémentaires. Tout d'abord il aurait fallu filter les dates, allant du 1er janvier à la date courante (**qui est considéré comme la date maximale**) et ensuite il aurait fallu calculer `Total Sales` sur ce filtre. Ce qui donnerais ceci:  
 ```dax
 Sales YTD = 
     CALCULATE(
@@ -216,3 +217,53 @@ Sales YTD =
             Calendrier[Date] <= MAX(Calendrier[Date]) && Calendrier[Année] = YEAR(MAX(Calendrier[Date]))
         ))
 ```
+
+*Très moins joli en effet...*  
+
+**Sales vs Previous Year**: Ici on cherche à comparer les ventes d'une année à sa précédente, pour y déterminer une baisse/hausse de ventes en pourcentage.  
+De façon mathématique cela reviens à écrire la formule:
+$$
+\text{Sales vs Previous Year} = \frac{AC - AP}{AP}
+$$
+Avec $AC$ les Total Sales de l'année courante et $AP$ les Total Sales de l'année précédente.  
+
+Le but finale est de créer une mesure qui calcul ce *YOY%*, on remarque que faire des mesures un peut partout peut devenir très bordélique...  
+Pour éviter ça, on va séparer le travail en deux variables:  
+- $AC$ : ventes de l'année actuelle que l'on appellera `prev_year`
+- $(AC - AP)$ : que l'on appellera `diff` 
+
+Pour récupérer les années courante et précédente en DAX il faudrait filtrer le tableau dans l'intervalle `YEAR(MAX(Calendrier[Date]))` et `YEAR(MAX(Calendrier[Date])) - 1`.  
+Sauf qu'ici, on ne précise que l'année, par exemple on ne peut pas faire une comparaison entre le 12 février 2015 et le 12 février 2016, seulement entre le 1er janvier 2015 et 1er janvier 2016.  
+
+DAX est très gentil et nous propose des fonctions déjà pré-faites qui nous facilite la tâche, ici on peut utiliser `DATEADD`. Celle-ci déplace l'ensemble de dates donné en fonction d'un intervalle spécifié. Cette fonction nous donne une colonne de donnée, donc **on ne peut pas l'utiliser seule**, il nous faut l'utilsier dans `CALCULATE`.  
+
+```dax
+VAR prev_year = CALCULATE([Total Sales], DATEADD(Calendrier[Date], -1, YEAR))
+```
+
+Pour la variable `diff` il suffit de soustraire:
+```dax
+VAR diff = [Total Sales] - prev_year
+```
+
+Et enfin, on divise les deux
+```dax
+DEVIDE(diff, prev_year)
+```
+
+Ce qui nous donne la mesure finale:
+
+```dax
+Sales vs Previous Year % = 
+VAR prev_year = CALCULATE([Total Sales], DATEADD(Calendrier[Date], -1, YEAR))
+VAR diff = [Total Sales] - prev_year
+RETURN
+    DEVIDE(diff, prev_year)
+```
+
+> 💡 Petit détail de DAX, on sépare les définitions de variable et la fonction avec `RETURN`
+
+Si on utilise dans l'onglet *Affichage de Rapport* une Table avec comme colonnes, notre nouvelle mesure en fonction de l'année et des ventes totales, on a le résultat suivant:
+
+![Table YOY%](../img/table_YOY.png)
+
